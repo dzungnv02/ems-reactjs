@@ -1,0 +1,121 @@
+version: "3.7"
+services:
+    frontend:
+        build:
+            context: ./frontend
+            dockerfile: Dockerfile
+        restart: always
+        ports:
+            - "5000:5000"
+        depends_on:
+            - backend
+            - traefik
+        links: 
+            - backend
+        labels:
+            - "traefik.enable=true"
+            - "traefik.docker.network=ems-reactjs-localhost"
+            - "traefik.backend=ems-be"
+            - "traefik.frontend.passHostHeader=true"
+            - "traefik.frontend.rule=Host:frontend.ems.localhost"
+    
+    backend:
+        build:
+            context: ./backend/stack
+            dockerfile: Dockerfile
+        restart: always
+        working_dir: /api
+        environment: 
+            - PATH=/root/.composer/vendor/bin:$PATH
+        volumes:
+            - ./backend:/api
+            - /api/stack
+        ports:
+            - "81:80"
+        depends_on:
+            - mongodb
+            - traefik
+            - rabbit
+        links: 
+            - mongodb
+        labels:
+            - "traefik.enable=true"
+            - "traefik.docker.network=ems-reactjs-localhost"
+            - "traefik.backend=ems-be_api"
+            - "traefik.frontend.passHostHeader=true"
+            - "traefik.frontend.rule=Host:backend.ems.localhost"
+    
+    mongodb:
+        image: mongo
+        restart: always
+        container_name: ems-mongodb
+        environment:
+            - MONGO_INITDB_ROOT_USERNAME=root
+            - MONGO_INITDB_ROOT_PASSWORD=admin@mongo
+            - MONGO_INITDB_DATABASE=ems
+            - MONGO_NON_ROOT_USERNAME=ems
+            - MONGO_NON_ROOT_PASSWORD=ems@mongo
+        volumes:
+            - ./mongo/data:/data/db
+        ports:
+            - 27017:27017
+        command: mongod --smallfiles
+
+    traefik:
+        image: traefik:latest
+        command: --api --web --docker --docker.domain=ems.localhost --logLevel=DEBUG
+        ports:
+            - 80:80
+            - 443:443
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+            - $PWD/traefik/traefik.toml:/traefik.toml
+            - $PWD/ca-generator/:/certs/
+        container_name: traefik  
+
+    rabbit:
+        hostname: rabbit
+        image: rabbitmq:latest
+        ports:
+            - 5672:5672
+        environment:
+            - RABBITMQ_DEFAULT_USER=admin
+            - RABBITMQ_DEFAULT_PASS=mypass321
+            - SERVICE_PORTS=5672
+            - TCP_PORTS=5672
+
+    job_queue_flask_app:
+        environment:
+            CELERY_INSTANCES: 2
+            BROKER_URL: "amqp://admin:mypass321@rabbit:5672"
+            BACKEND_URL: "rpc://"
+        build:
+            context: job_queue
+            dockerfile: Dockerfile
+        container_name: flask
+        depends_on:
+            - rabbit
+        command: |
+            bash -c "./wait-for-it.sh -p 5672 -h rabbit -- gunicorn \
+            --workers=4 --bind=0.0.0.0:5000 --keep-alive=2000 \
+            --timeout=2000 --log-level=debug flask_app:app"
+    
+    job_queue_celery_flower:
+        environment:
+            CELERY_INSTANCES: 2
+            BROKER_URL: "amqp://admin:mypass321@rabbit:5672"
+            BACKEND_URL: "rpc://"
+        build:
+            context: job_queue
+            dockerfile: Dockerfile
+        container_name: flower
+        depends_on:
+            - rabbit
+        command: |
+            bash -c "./wait-for-it.sh -p 5672 -h rabbit -- celery \
+            -A tasks_docker.celery flower --host=0.0.0.0 \
+            --port=5555"
+networks:
+    default:
+        external:
+            name: ems-reactjs-localhost
