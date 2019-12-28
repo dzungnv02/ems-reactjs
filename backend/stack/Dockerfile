@@ -271,7 +271,7 @@ RUN set -eux; \
 	php --version
 
 RUN apt-get update \
-	&& apt-get install -y libldb-dev libldap2-dev libmcrypt-dev libzip-dev libxml2-dev zip librabbitmq-dev
+	&& apt-get install -y libldb-dev libldap2-dev libmcrypt-dev libzip-dev libxml2-dev zip librabbitmq-dev libmemcached-dev libpq-dev
 
 COPY docker-php-ext-* docker-php-entrypoint /usr/local/bin/
 
@@ -282,6 +282,8 @@ RUN docker-php-ext-enable sodium \
 	&& docker-php-ext-install ctype \
 	&& docker-php-ext-install ldap \
 	&& docker-php-ext-install xml \
+	&& docker-php-ext-install pdo_pgsql \
+	&& pecl install memcached \
 	&& pecl install amqp \
 	&& pecl install mcrypt \
 	&& pecl install mongodb \
@@ -289,6 +291,7 @@ RUN docker-php-ext-enable sodium \
 	&& docker-php-ext-enable amqp \
 	&& docker-php-ext-enable mongodb \
 	&& docker-php-ext-enable redis \
+	&& docker-php-ext-enable memcached \
 	&& docker-php-ext-enable mcrypt
 
 RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"

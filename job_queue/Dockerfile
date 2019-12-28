@@ -29,4 +29,4 @@ ENV CONDA_DEFAULT_ENV job-queue
 ENV PATH /home/flask/.conda/envs/job-queue/bin:/opt/conda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 COPY . ./
-#CMD ["/bin/bash", "-c", "/home/flask/job_queue_flask_app/start_flask_app.sh"]
+CMD ["/bin/bash", "-c", "/home/flask/job_queue_flask_app/start_flask_app.sh"]
