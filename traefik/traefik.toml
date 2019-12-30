@@ -1,0 +1,25 @@
+debug = false
+
+logLevel = "DEBUG"
+#defaultEntryPoints = ["https","http"]
+defaultEntryPoints = ["http"]
+
+[entryPoints]
+  [entryPoints.http]
+  address = ":80"
+  #  [entryPoints.http.redirect]
+  #  entryPoint = "https"
+  #[entryPoints.https]
+  #address = ":443"
+  #[entryPoints.https.tls]
+  #  [[entryPoints.https.tls.certificates]]
+  #    certFile = "/certs/all.docker.localhost.crt"
+  #    keyFile = "/certs/all.docker.localhost.key"
+
+[retry]
+
+[docker]
+endpoint = "unix:///var/run/docker.sock"
+domain = "ems.localhost"
+watch = true
+exposedbydefault = false
